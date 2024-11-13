@@ -1,0 +1,37 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+h1 {
+    color: #333;
+}
+
+.toolbox {
+    margin-bottom: 20px;
+}
+
+button {
+    margin-right: 10px;
+}
+
+#canvasContainer {
+    position: relative;
+    width: 800px;
+    height: 600px;
+    resize: both;
+    overflow: hidden;
+    border: 2px solid black;
+    background-color: lightgrey;
+    border-radius: 8px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+#stageCanvas {
+    width: 100%;
+    height: 100%;
+}

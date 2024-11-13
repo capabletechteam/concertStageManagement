@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concert Layout Manager</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Additional styling for the context menu */
+        .context-menu {
+            position: absolute;
+            display: none;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        .context-menu ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .context-menu ul li {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .context-menu ul li:hover {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Concert Layout Manager</h1>
+        
+        <div class="toolbox mb-3">
+            <input type="text" id="layoutName" placeholder="Enter layout name" class="form-control mb-2">
+            <button onclick="saveLayout()" class="btn btn-primary">Save Layout</button>
+            <button onclick="loadLayouts()" class="btn btn-secondary">Load Layouts</button>
+            <select id="layoutsList" onchange="loadSelectedLayout()" class="form-control mt-2">
+                <option value="">Select a layout to load</option>
+            </select>
+        </div>
+
+        <div class="item-buttons mb-3">
+            <button onclick="addItem('chair')" class="btn btn-info">Add Chair</button>
+            <button onclick="addItem('conductor')" class="btn btn-info">Add Conductor</button>
+            <button onclick="addItem('drumKit')" class="btn btn-info">Add Drum Kit</button>
+            <button onclick="addItem('musicStand')" class="btn btn-info">Add Music Stand</button>
+        </div>
+
+        <div id="canvasContainer">
+            <canvas id="stageCanvas"></canvas>
+        </div>
+
+        <!-- Context menu for item options -->
+        <div id="contextMenu" class="context-menu">
+            <ul>
+                <li onclick="editItem()">Edit Position</li>
+                <li onclick="deleteItem()">Delete</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('stageCanvas');
+        const ctx = canvas.getContext('2d');
+        const items = [];
+        let selectedItem = null;
+        let draggingItem = null;
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        const images = {
+            musicStand: new Image(),
+            drumKit: new Image(),
+            chair: new Image(),
+            conductor: new Image()
+        };
+        images.musicStand.src = "/static/images/musicstand.png";
+        images.drumKit.src = "/static/images/drumkit.png";
+        images.chair.src = "/static/images/chair.png";
+        images.conductor.src = "/static/images/conductor.png";
+
+        // Draw items on canvas
+        function drawItems() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            items.forEach(item => {
+                const img = images[item.type];
+                if (img) {
+                    ctx.drawImage(img, item.x - 15, item.y - 15, 30, 30);
+                }
+            });
+        }
+
+        // Add an item to the canvas
+        function addItem(type) {
+            items.push({ type: type, x: 100, y: 100 });
+            drawItems();
+        }
+
+        // Context menu for Edit and Delete
+        const contextMenu = document.getElementById('contextMenu');
+
+        // Right-click to open context menu
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const { offsetX, offsetY } = e;
+            selectedItem = items.find(item =>
+                offsetX > item.x - 15 && offsetX < item.x + 15 &&
+                offsetY > item.y - 15 && offsetY < item.y + 15
+            );
+            if (selectedItem) {
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = `${e.pageX}px`;
+                contextMenu.style.top = `${e.pageY}px`;
+            }
+        });
+
+        // Click anywhere else to close context menu
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+
+        // Edit item position
+        function editItem() {
+            if (selectedItem) {
+                draggingItem = selectedItem;
+            }
+        }
+
+        // Delete item
+        function deleteItem() {
+            if (selectedItem) {
+                const index = items.indexOf(selectedItem);
+                if (index > -1) {
+                    items.splice(index, 1);
+                    drawItems();
+                }
+                selectedItem = null;
+            }
+        }
+
+        // Drag and drop functionality
+        canvas.addEventListener('mousedown', (e) => {
+            const { offsetX, offsetY } = e;
+            if (!draggingItem) {
+                draggingItem = items.find(item =>
+                    offsetX > item.x - 15 && offsetX < item.x + 15 &&
+                    offsetY > item.y - 15 && offsetY < item.y + 15
+                );
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (draggingItem) {
+                draggingItem.x = e.offsetX;
+                draggingItem.y = e.offsetY;
+                drawItems();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            draggingItem = null;
+        });
+
+        // Save the layout
+        function saveLayout() {
+            const layoutName = document.getElementById('layoutName').value;
+            if (!layoutName) {
+                alert("Please enter a layout name.");
+                return;
+            }
+            const layoutData = { items: items };
+            fetch('/save_layout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: layoutName, data: layoutData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadLayouts();
+            });
+        }
+
+        // Load layout from server
+        function loadLayouts() {
+            fetch('/get_layouts')
+                .then(response => response.json())
+                .then(data => {
+                    const layoutsList = document.getElementById('layoutsList');
+                    layoutsList.innerHTML = '<option value="">Select a layout to load</option>';
+                    data.forEach(layout => {
+                        const option = document.createElement('option');
+                        option.value = layout.id;
+                        option.textContent = layout.name;
+                        layoutsList.appendChild(option);
+                    });
+                });
+        }
+
+        function loadSelectedLayout() {
+            const layoutId = document.getElementById('layoutsList').value;
+            if (!layoutId) return;
+            fetch(`/get_layout?id=${layoutId}`)
+                .then(response => response.json())
+                .then(layout => {
+                    items.splice(0, items.length, ...layout.items);
+                    drawItems();
+                });
+        }
+    </script>
+</body>
+</html>
