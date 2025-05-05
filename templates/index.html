@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <div class="container">
         <h1>Concert Layout Manager</h1>
@@ -22,11 +24,15 @@
             <button onclick="addItem('conductor')" class="btn btn-info">Add Conductor</button>
             <button onclick="addItem('drumKit')" class="btn btn-info">Add Drum Kit</button>
             <button onclick="addItem('musicStand')" class="btn btn-info">Add Music Stand</button>
+            <button onclick="addItem('microphone')" class="btn btn-info">Add Microphone</button>
+            <button onclick="addItem('stool')" class="btn btn-info">Add Stool</button>
         </div>
 
         <div class="counter-display">
             <p>Number of Chairs: <span id="chairCount">0</span></p>
             <p>Number of Music Stands: <span id="musicStandCount">0</span></p>
+            <p>Number of Microphones: <span id="microphoneCount">0</span></p>
+            <p>Number of Stools: <span id="stoolCount">0</span></p>
         </div>
 
         <div id="canvasContainer">
@@ -36,7 +42,9 @@
         <h3>Saved Layouts</h3>
         <ul id="layoutsList" class="list-group mb-3"></ul>
     </div>
-
+    <div class="info">
+        <h1>How to use</h1>
+    </div>
     <script>
         const canvas = document.getElementById('stageCanvas');
         const ctx = canvas.getContext('2d');
@@ -48,12 +56,16 @@
             musicStand: new Image(),
             drumKit: new Image(),
             chair: new Image(),
-            conductor: new Image()
+            conductor: new Image(),
+            microphone: new Image(),
+            stool: new Image(),
         };
         images.musicStand.src = "/static/images/musicstand.png";
         images.drumKit.src = "/static/images/drumkit.png";
         images.chair.src = "/static/images/chair.png";
         images.conductor.src = "/static/images/conductor.png";
+        images.microphone.src = "/static/images/microphone.png";
+        images.stool.src = "/static/images/stool.png";
 
         function drawItems() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -62,12 +74,27 @@
                 if (img) {
                     ctx.drawImage(img, item.x - 15, item.y - 15, 30, 30);
                 }
+                if (item.name) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '12px Monospace';
+
+                    // ensure the text is centered
+                    const textWidth = ctx.measureText(item.name).width;
+                    ctx.fillText(item.name, item.x - textWidth / 2, item.y - 20);
+                }
             });
             updateCounters();
         }
 
         function addItem(type) {
-            items.push({ type: type, x: 100, y: 100 });
+            if (type != 'chair' && type != 'musicStand' && type != 'stool') {
+                // prompt for item name
+                const itemName = prompt("Enter item name:");
+                items.push({type: type, x: 100, y: 100, name: itemName});
+            } else {
+                items.push({type: type, x: 100, y: 100});
+            }
+
             drawItems();
         }
 
@@ -78,17 +105,17 @@
                 return;
             }
 
-            const layoutData = { items: items };
+            const layoutData = {items: items};
             fetch('/save_layout', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: layoutName, data: layoutData })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: layoutName, data: layoutData})
             })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                loadLayouts();
-            });
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadLayouts();
+                });
         }
 
         function loadLayouts() {
@@ -101,12 +128,12 @@
                         const layoutItem = document.createElement('li');
                         layoutItem.className = 'list-group-item d-flex justify-content-between align-items-center';
                         layoutItem.innerHTML = `
-                            ${layout.name}
-                            <div>
-                                <button onclick="editLayout(${layout.id})" class="btn btn-warning btn-sm">Edit</button>
-                                <button onclick="deleteLayout(${layout.id})" class="btn btn-danger btn-sm">Delete</button>
-                            </div>
-                        `;
+                        ${layout.name}
+                        <div>
+                            <button onclick="editLayout(${layout.id})" class="btn btn-warning btn-sm">Edit</button>
+                            <button onclick="deleteLayout(${layout.id})" class="btn btn-danger btn-sm">Delete</button>
+                        </div>
+                    `;
                         layoutsList.appendChild(layoutItem);
                     });
                 });
@@ -114,7 +141,7 @@
 
         function deleteLayout(id) {
             if (confirm("Are you sure you want to delete this layout?")) {
-                fetch(`/delete_layout?id=${id}`, { method: 'DELETE' })
+                fetch(`/delete_layout?id=${id}`, {method: 'DELETE'})
                     .then(response => response.json())
                     .then(data => {
                         alert(data.message);
@@ -127,8 +154,13 @@
             fetch(`/get_layout?id=${id}`)
                 .then(response => response.json())
                 .then(layout => {
+                    console.log(layout);
                     document.getElementById('layoutName').value = layout.name;
-                    items.splice(0, items.length, ...layout.items);
+                    items.length = 0; // Clear current items
+                    let parsedItems = JSON.parse(layout.data);
+                    parsedItems.items.forEach(item => {
+                        items.push(item);
+                    });
                     drawItems();
                 });
         }
@@ -136,9 +168,13 @@
         function updateCounters() {
             const chairCount = items.filter(item => item.type === 'chair').length;
             const musicStandCount = items.filter(item => item.type === 'musicStand').length;
+            const microphoneCount = items.filter(item => item.type === 'microphone').length;
+            const stoolCount = items.filter(item => item.type === 'stool').length;
 
             document.getElementById('chairCount').textContent = chairCount;
             document.getElementById('musicStandCount').textContent = musicStandCount;
+            document.getElementById('microphoneCount').textContent = microphoneCount;
+            document.getElementById('stoolCount').textContent = stoolCount;
         }
 
         let draggingItem = null;
@@ -147,7 +183,7 @@
             const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
             const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
 
-            draggingItem = items.find(item => 
+            draggingItem = items.find(item =>
                 offsetX > item.x - 15 && offsetX < item.x + 15 &&
                 offsetY > item.y - 15 && offsetY < item.y + 15
             );
@@ -172,14 +208,40 @@
             draggingItem = null;
         }
 
+        function handleRightClick(e) {
+            const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+
+            const clickedItem = items.find(item =>
+                offsetX > item.x - 15 && offsetX < item.x + 15 &&
+                offsetY > item.y - 15 && offsetY < item.y + 15
+            );
+
+            if (clickedItem) {
+                const newLabel = prompt("Edit item label (d to delete item):", clickedItem.name);
+                if (newLabel === 'd') {
+                    items.splice(items.indexOf(clickedItem), 1);
+                    drawItems();
+                } else if (newLabel !== null && newLabel.trim() !== '') {
+                    clickedItem.name = newLabel;
+                    drawItems();
+                }
+            }
+
+            e.preventDefault(); // Prevent the context menu from appearing
+        }
+
         canvas.addEventListener('mousedown', startDragging);
         canvas.addEventListener('mousemove', dragItem);
         canvas.addEventListener('mouseup', stopDragging);
-        canvas.addEventListener('touchstart', startDragging, { passive: false });
-        canvas.addEventListener('touchmove', dragItem, { passive: false });
+        canvas.addEventListener('touchstart', startDragging, {passive: false});
+        canvas.addEventListener('touchmove', dragItem, {passive: false});
         canvas.addEventListener('touchend', stopDragging);
+        canvas.addEventListener('contextmenu', handleRightClick);
 
         window.onload = loadLayouts;
     </script>
+
 </body>
+
 </html>
