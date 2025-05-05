@@ -1,8 +1,25 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, url_for
+from werkzeug.utils import secure_filename
 import sqlite3
 import json
+import os
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = 'static/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route('/upload_background', methods=['POST'])
+def upload_background():
+    if 'backgroundImage' not in request.files:
+        return jsonify(success=False, message='No file part'), 400
+    file = request.files['backgroundImage']
+    if file.filename == '' or not file.filename:
+        return jsonify(success=False, message='No selected file'), 400
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+    return jsonify(success=True, path=url_for('static', filename=f'uploads/{filename}'))
 
 # Initialize the SQLite database
 def init_db():

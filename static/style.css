@@ -27,6 +27,28 @@ button {
     font-size: 1rem;
 }
 
+.counter-display {
+    font-size: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    margin-left: -4vw;
+}
+
+.counter-display span {
+    font-weight: bold;
+}
+
+.counter-display p {
+    margin-left: 1vw;
+}
+
+ul#layoutsList {
+    font-size: 1rem;
+}
+
 /* Responsive container for canvas */
 #canvasContainer {
     position: relative;
@@ -132,4 +154,8 @@ button {
 .draggable:active {
     cursor: grabbing;
     opacity: 0.8;
+}
+
+p {
+    font-size: 1rem;
 }

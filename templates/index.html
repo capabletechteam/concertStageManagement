@@ -10,238 +10,242 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>Concert Layout Manager</h1>
+    <h2><a href="/help" class="btn btn-info">Help</a>
+        <div class="container">
+            <h1>Concert Layout Manager</h1>
 
-        <div class="toolbox mb-3">
-            <input type="text" id="layoutName" placeholder="Enter layout name" class="form-control mb-2">
-            <button onclick="saveLayout()" class="btn btn-primary">Save Layout</button>
-            <button onclick="loadLayouts()" class="btn btn-secondary">Refresh Layouts</button>
+            <div class="toolbox mb-3">
+                <input type="text" id="layoutName" placeholder="Enter layout name" class="form-control mb-2">
+                <button onclick="saveLayout()" class="btn btn-primary">Save Layout</button>
+                <button onclick="loadLayouts()" class="btn btn-secondary">Refresh Layouts</button>
+            </div>
+
+            <form id="backgroundUploadForm" enctype="multipart/form-data" class="mb-3">
+                <input type="file" name="backgroundImage" accept="image/*" class="form-control mb-2">
+                <button type="submit" class="btn btn-success">Upload Background Image</button>
+            </form>
+
+            <div class="item-buttons mb-3">
+                <button onclick="addItem('chair')" class="btn btn-info">Add Chair</button>
+                <button onclick="addItem('conductor')" class="btn btn-info">Add Conductor</button>
+                <button onclick="addItem('drumKit')" class="btn btn-info">Add Drum Kit</button>
+                <button onclick="addItem('musicStand')" class="btn btn-info">Add Music Stand</button>
+                <button onclick="addItem('microphone')" class="btn btn-info">Add Microphone</button>
+                <button onclick="addItem('stool')" class="btn btn-info">Add Stool</button>
+            </div>
+
+            <div class="counter-display">
+                <p>Number of Chairs: <span id="chairCount">0</span></p>
+                <p>Number of Music Stands: <span id="musicStandCount">0</span></p>
+                <p>Number of Microphones: <span id="microphoneCount">0</span></p>
+                <p>Number of Stools: <span id="stoolCount">0</span></p>
+            </div>
+
+            <div id="canvasContainer">
+                <canvas id="stageCanvas"></canvas>
+            </div>
+
+            <h3>Saved Layouts</h3>
+            <ul id="layoutsList" class="list-group mb-3"></ul>
         </div>
 
-        <div class="item-buttons mb-3">
-            <button onclick="addItem('chair')" class="btn btn-info">Add Chair</button>
-            <button onclick="addItem('conductor')" class="btn btn-info">Add Conductor</button>
-            <button onclick="addItem('drumKit')" class="btn btn-info">Add Drum Kit</button>
-            <button onclick="addItem('musicStand')" class="btn btn-info">Add Music Stand</button>
-            <button onclick="addItem('microphone')" class="btn btn-info">Add Microphone</button>
-            <button onclick="addItem('stool')" class="btn btn-info">Add Stool</button>
-        </div>
+        <script>
+            const canvas = document.getElementById('stageCanvas');
+            const ctx = canvas.getContext('2d');
+            const items = [];
+            canvas.width = 800;
+            canvas.height = 600;
 
-        <div class="counter-display">
-            <p>Number of Chairs: <span id="chairCount">0</span></p>
-            <p>Number of Music Stands: <span id="musicStandCount">0</span></p>
-            <p>Number of Microphones: <span id="microphoneCount">0</span></p>
-            <p>Number of Stools: <span id="stoolCount">0</span></p>
-        </div>
+            const images = {
+                musicStand: new Image(),
+                drumKit: new Image(),
+                chair: new Image(),
+                conductor: new Image(),
+                microphone: new Image(),
+                stool: new Image(),
+            };
+            images.musicStand.src = "/static/images/musicstand.png";
+            images.drumKit.src = "/static/images/drumkit.png";
+            images.chair.src = "/static/images/chair.png";
+            images.conductor.src = "/static/images/conductor.png";
+            images.microphone.src = "/static/images/microphone.png";
+            images.stool.src = "/static/images/stool.png";
 
-        <div id="canvasContainer">
-            <canvas id="stageCanvas"></canvas>
-        </div>
+            function drawItems() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        <h3>Saved Layouts</h3>
-        <ul id="layoutsList" class="list-group mb-3"></ul>
-    </div>
-    <div class="info">
-        <h1>How to use</h1>
-    </div>
-    <script>
-        const canvas = document.getElementById('stageCanvas');
-        const ctx = canvas.getContext('2d');
-        const items = [];
-        canvas.width = 800;
-        canvas.height = 600;
-
-        const images = {
-            musicStand: new Image(),
-            drumKit: new Image(),
-            chair: new Image(),
-            conductor: new Image(),
-            microphone: new Image(),
-            stool: new Image(),
-        };
-        images.musicStand.src = "/static/images/musicstand.png";
-        images.drumKit.src = "/static/images/drumkit.png";
-        images.chair.src = "/static/images/chair.png";
-        images.conductor.src = "/static/images/conductor.png";
-        images.microphone.src = "/static/images/microphone.png";
-        images.stool.src = "/static/images/stool.png";
-
-        function drawItems() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            items.forEach(item => {
-                const img = images[item.type];
-                if (img) {
-                    ctx.drawImage(img, item.x - 15, item.y - 15, 30, 30);
+                const backgroundItem = items.find(item => item.type === 'background' && item.src);
+                if (backgroundItem) {
+                    const bgImg = new Image();
+                    bgImg.onload = () => {
+                        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                        drawForegroundItems();
+                    };
+                    bgImg.src = backgroundItem.src;
+                } else {
+                    drawForegroundItems();
                 }
-                if (item.name) {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '12px Monospace';
+            }
 
-                    // ensure the text is centered
-                    const textWidth = ctx.measureText(item.name).width;
-                    ctx.fillText(item.name, item.x - textWidth / 2, item.y - 20);
-                }
+            function drawForegroundItems() {
+                items.forEach(item => {
+                    if (item.type !== 'background') {
+                        const img = images[item.type];
+                        if (img) {
+                            ctx.drawImage(img, item.x - 15, item.y - 15, 30, 30);
+                        }
+                        if (item.name) {
+                            ctx.fillStyle = 'black';
+                            ctx.font = '12px Monospace';
+                            const textWidth = ctx.measureText(item.name).width;
+                            ctx.fillText(item.name, item.x - textWidth / 2, item.y - 20);
+                        }
+                    }
+                });
+                updateCounters();
+            }
+
+
+            document.getElementById('backgroundUploadForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                fetch('/upload_background', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            items.unshift({type: 'background', x: 0, y: 0, src: data.path});
+                            drawItems();
+                            alert("Background uploaded and added.");
+                        } else {
+                            alert("Upload failed.");
+                        }
+                    })
+                    .catch(() => alert("Error uploading background."));
             });
-            updateCounters();
-        }
 
-        function addItem(type) {
-            if (type != 'chair' && type != 'musicStand' && type != 'stool') {
-                // prompt for item name
-                const itemName = prompt("Enter item name:");
-                items.push({type: type, x: 100, y: 100, name: itemName});
-            } else {
-                items.push({type: type, x: 100, y: 100});
+            function addItem(type, data = null, name = null) {
+                if (type !== 'chair' && type !== 'musicStand' && type !== 'stool') {
+                    const itemName = prompt("Enter item name:");
+                    items.push({type: type, x: 100, y: 100, name: itemName});
+                } else {
+                    items.push({type: type, x: 100, y: 100});
+                }
+                drawItems();
             }
 
-            drawItems();
-        }
-
-        function saveLayout() {
-            const layoutName = document.getElementById('layoutName').value;
-            if (!layoutName) {
-                alert("Please enter a layout name.");
-                return;
-            }
-
-            const layoutData = {items: items};
-            fetch('/save_layout', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({name: layoutName, data: layoutData})
-            })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    loadLayouts();
-                });
-        }
-
-        function loadLayouts() {
-            fetch('/get_layouts')
-                .then(response => response.json())
-                .then(data => {
-                    const layoutsList = document.getElementById('layoutsList');
-                    layoutsList.innerHTML = '';
-                    data.forEach(layout => {
-                        const layoutItem = document.createElement('li');
-                        layoutItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                        layoutItem.innerHTML = `
-                        ${layout.name}
-                        <div>
-                            <button onclick="editLayout(${layout.id})" class="btn btn-warning btn-sm">Edit</button>
-                            <button onclick="deleteLayout(${layout.id})" class="btn btn-danger btn-sm">Delete</button>
-                        </div>
-                    `;
-                        layoutsList.appendChild(layoutItem);
-                    });
-                });
-        }
-
-        function deleteLayout(id) {
-            if (confirm("Are you sure you want to delete this layout?")) {
-                fetch(`/delete_layout?id=${id}`, {method: 'DELETE'})
-                    .then(response => response.json())
+            function saveLayout() {
+                const layoutName = document.getElementById('layoutName').value;
+                if (!layoutName) {
+                    alert("Please enter a layout name.");
+                    return;
+                }
+                fetch('/save_layout', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: layoutName, data: {items: items}})
+                })
+                    .then(res => res.json())
                     .then(data => {
                         alert(data.message);
                         loadLayouts();
                     });
             }
-        }
 
-        function editLayout(id) {
-            fetch(`/get_layout?id=${id}`)
-                .then(response => response.json())
-                .then(layout => {
-                    console.log(layout);
-                    document.getElementById('layoutName').value = layout.name;
-                    items.length = 0; // Clear current items
-                    let parsedItems = JSON.parse(layout.data);
-                    parsedItems.items.forEach(item => {
-                        items.push(item);
+            function loadLayouts() {
+                fetch('/get_layouts')
+                    .then(res => res.json())
+                    .then(data => {
+                        const layoutsList = document.getElementById('layoutsList');
+                        layoutsList.innerHTML = '';
+                        data.forEach(layout => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            li.innerHTML = `${layout.name}
+                    <div>
+                        <button onclick="editLayout(${layout.id})" class="btn btn-warning btn-sm">Edit</button>
+                        <button onclick="deleteLayout(${layout.id})" class="btn btn-danger btn-sm">Delete</button>
+                    </div>`;
+                            layoutsList.appendChild(li);
+                        });
                     });
-                    drawItems();
-                });
-        }
-
-        function updateCounters() {
-            const chairCount = items.filter(item => item.type === 'chair').length;
-            const musicStandCount = items.filter(item => item.type === 'musicStand').length;
-            const microphoneCount = items.filter(item => item.type === 'microphone').length;
-            const stoolCount = items.filter(item => item.type === 'stool').length;
-
-            document.getElementById('chairCount').textContent = chairCount;
-            document.getElementById('musicStandCount').textContent = musicStandCount;
-            document.getElementById('microphoneCount').textContent = microphoneCount;
-            document.getElementById('stoolCount').textContent = stoolCount;
-        }
-
-        let draggingItem = null;
-
-        function startDragging(e) {
-            const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
-            const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
-
-            draggingItem = items.find(item =>
-                offsetX > item.x - 15 && offsetX < item.x + 15 &&
-                offsetY > item.y - 15 && offsetY < item.y + 15
-            );
-
-            e.preventDefault();
-        }
-
-        function dragItem(e) {
-            if (draggingItem) {
-                const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
-                const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
-
-                draggingItem.x = offsetX;
-                draggingItem.y = offsetY;
-                drawItems();
-
-                e.preventDefault();
             }
-        }
 
-        function stopDragging() {
-            draggingItem = null;
-        }
-
-        function handleRightClick(e) {
-            const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
-            const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
-
-            const clickedItem = items.find(item =>
-                offsetX > item.x - 15 && offsetX < item.x + 15 &&
-                offsetY > item.y - 15 && offsetY < item.y + 15
-            );
-
-            if (clickedItem) {
-                const newLabel = prompt("Edit item label (d to delete item):", clickedItem.name);
-                if (newLabel === 'd') {
-                    items.splice(items.indexOf(clickedItem), 1);
-                    drawItems();
-                } else if (newLabel !== null && newLabel.trim() !== '') {
-                    clickedItem.name = newLabel;
-                    drawItems();
+            function deleteLayout(id) {
+                if (confirm("Are you sure you want to delete this layout?")) {
+                    fetch(`/delete_layout?id=${id}`, {method: 'DELETE'})
+                        .then(res => res.json())
+                        .then(data => {
+                            alert(data.message);
+                            loadLayouts();
+                        });
                 }
             }
 
-            e.preventDefault(); // Prevent the context menu from appearing
-        }
+            function editLayout(id) {
+                fetch(`/get_layout?id=${id}`)
+                    .then(res => res.json())
+                    .then(layout => {
+                        document.getElementById('layoutName').value = layout.name;
+                        items.length = 0;
+                        let parsed = JSON.parse(layout.data);
+                        parsed.items.forEach(item => items.push(item));
+                        drawItems();
+                    });
+            }
 
-        canvas.addEventListener('mousedown', startDragging);
-        canvas.addEventListener('mousemove', dragItem);
-        canvas.addEventListener('mouseup', stopDragging);
-        canvas.addEventListener('touchstart', startDragging, {passive: false});
-        canvas.addEventListener('touchmove', dragItem, {passive: false});
-        canvas.addEventListener('touchend', stopDragging);
-        canvas.addEventListener('contextmenu', handleRightClick);
+            function updateCounters() {
+                document.getElementById('chairCount').textContent = items.filter(i => i.type === 'chair').length;
+                document.getElementById('musicStandCount').textContent = items.filter(i => i.type === 'musicStand').length;
+                document.getElementById('microphoneCount').textContent = items.filter(i => i.type === 'microphone').length;
+                document.getElementById('stoolCount').textContent = items.filter(i => i.type === 'stool').length;
+            }
 
-        window.onload = loadLayouts;
-    </script>
+            let draggingItem = null;
+            function startDragging(e) {
+                const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+                draggingItem = items.find(item => offsetX > item.x - 15 && offsetX < item.x + 15 && offsetY > item.y - 15 && offsetY < item.y + 15);
+                if (draggingItem?.type === 'background') {draggingItem = null;}
+                e.preventDefault();
+            }
+            function dragItem(e) {
+                if (draggingItem && draggingItem.type !== 'background') {
+                    const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                    const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+                    draggingItem.x = offsetX;
+                    draggingItem.y = offsetY;
+                    // wait a bit before redrawing to avoid flickering
+                    setTimeout(() => {
+                        drawItems();
+                    }, 30);
+                    e.preventDefault();
+                }
+            }
+            function stopDragging() {draggingItem = null;}
+            function handleRightClick(e) {
+                const offsetX = e.offsetX || e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                const offsetY = e.offsetY || e.touches[0].clientY - canvas.getBoundingClientRect().top;
+                const clickedItem = items.find(item => offsetX > item.x - 15 && offsetX < item.x + 15 && offsetY > item.y - 15 && offsetY < item.y + 15);
+                if (clickedItem && clickedItem.type !== 'background') {
+                    const newLabel = prompt("Edit item label (d to delete):", clickedItem.name);
+                    if (newLabel === 'd') {items.splice(items.indexOf(clickedItem), 1); drawItems();}
+                    else if (newLabel?.trim() !== '') {clickedItem.name = newLabel; drawItems();}
+                }
+                e.preventDefault();
+            }
+            canvas.addEventListener('mousedown', startDragging);
+            canvas.addEventListener('mousemove', dragItem);
+            canvas.addEventListener('mouseup', stopDragging);
+            canvas.addEventListener('touchstart', startDragging, {passive: false});
+            canvas.addEventListener('touchmove', dragItem, {passive: false});
+            canvas.addEventListener('touchend', stopDragging);
+            canvas.addEventListener('contextmenu', handleRightClick);
 
+            window.onload = loadLayouts;
+        </script>
 </body>
 
 </html>
