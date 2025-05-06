@@ -7,6 +7,8 @@ __pycache__/
 *.so
 
 static/uploads
+*.db
+
 
 # Distribution / packaging
 .Python

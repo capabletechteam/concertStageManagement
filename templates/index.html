@@ -23,6 +23,7 @@
             <form id="backgroundUploadForm" enctype="multipart/form-data" class="mb-3">
                 <input type="file" name="backgroundImage" accept="image/*" class="form-control mb-2">
                 <button type="submit" class="btn btn-success">Upload Background Image</button>
+                <button onclick="removeBg()" class="btn btn-danger">Remove Background Image</button>
             </form>
 
             <div class="item-buttons mb-3">
@@ -71,6 +72,14 @@
             images.microphone.src = "/static/images/microphone.png";
             images.stool.src = "/static/images/stool.png";
 
+            function removeBg() {
+                const bgItem = items.find(item => item.type === 'background');
+                if (bgItem) {
+                    items.splice(items.indexOf(bgItem), 1);
+                    drawItems();
+                }
+            }
+
             function drawItems() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -118,7 +127,6 @@
                         if (data.success) {
                             items.unshift({type: 'background', x: 0, y: 0, src: data.path});
                             drawItems();
-                            alert("Background uploaded and added.");
                         } else {
                             alert("Upload failed.");
                         }
